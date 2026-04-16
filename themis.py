@@ -13,41 +13,24 @@ import urllib.request
 ### Color scheme:
 # Uni Tuebingen corporate colors: primary
 tue_red = np.array([141.0, 45.0, 57.0]) / 255.0
-
 tue_dark = np.array([55.0, 65.0, 74.0]) / 255.0
-
 tue_gray = np.array([175.0, 179.0, 183.0]) / 255.0
-
 tue_gold = np.array([174.0, 159.0, 109.0]) / 255.0
-
 tue_lightgold = np.array([239.0, 236.0, 226.0]) / 255.0
-
 # Uni Tuebingen corporate colors: secondary
 
 tue_darkblue = np.array([65.0, 90.0, 140.0]) / 255.0
-
 tue_blue = np.array([0.0, 105.0, 170.0]) / 255.0
-
 tue_lightblue = np.array([80.0, 170.0, 200.0]) / 255.0
-
 tue_lightgreen = np.array([130.0, 185.0, 160.0]) / 255.0
-
 tue_green = np.array([125.0, 165.0, 75.0]) / 255.0
-
 tue_darkgreen = np.array([50.0, 110.0, 30.0]) / 255.0
-
 tue_ocre = np.array([200.0, 80.0, 60.0]) / 255.0
-
 tue_violet = np.array([175.0, 110.0, 150.0]) / 255.0
-
 tue_mauve = np.array([180.0, 160.0, 150.0]) / 255.0
-
 tue_lightorange = np.array([215.0, 180.0, 105.0]) / 255.0
-
 tue_orange = np.array([210.0, 150.0, 0.0]) / 255.0
-
 tue_brown = np.array([145.0, 105.0, 70.0]) / 255.0
-
 
 # plt.rcParams.update(bundles.beamer_moml())
 plt.rcParams.update({"figure.dpi": 200})
@@ -70,6 +53,8 @@ price_preference = st.sidebar.slider("Your preferred price for CO2 emissions", m
 ### LOAD DATA:
 df = pd.read_csv("themis_data.csv")
 df_current = df[df["year"] == 2024]
+# remove "World":
+df_current = df_current[df_current["entity"] != "World"]
 # actually, remove everyone with code "NaN" (Those are regions, not countries, e.g. "World", "Africa", "Asia", ...)
 df_current = df_current[~df_current["code"].isna()]
 
@@ -80,10 +65,11 @@ country = st.sidebar.selectbox(
 )
 
 df_current["share_of_global"] = (
-    df_current["emissions_total_as_share_of_global"]
-    / df_current["emissions_total_as_share_of_global"].sum()
+    df_current["emissions_total_per_capita"]
+    / df_current["emissions_total_per_capita"].sum()
 )
 N = len(df_current)
+shares = df_current["share_of_global"].values
 
 ### Sample price preferences for each country:
 
@@ -110,7 +96,6 @@ price_preferences[countries == country] = price_preference
 
 ### Compute Themis price:
 xplot = np.linspace(0, UPPER + 5, 1000)
-shares = df_current["share_of_global"].values
 SF = (price_preferences[None, :] < xplot[:, None]) * shares[None, :]
 SF = 1 - SF.sum(axis=1)
 
