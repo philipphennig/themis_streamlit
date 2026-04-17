@@ -1,14 +1,22 @@
 import streamlit as st
 
 from matplotlib import pyplot as plt
-# from tueplots import bundles
+from tueplots import bundles
 import pandas as pd
+
 # from tueplots.constants.color import rgb
+
+plt.rcParams.update(bundles.beamer_moml())
 
 import numpy as np
 import requests
 import ssl
 import urllib.request
+
+if "rng_seed" not in st.session_state:
+    st.session_state.rng_seed = 0
+
+rng = np.random.default_rng(seed=st.session_state.rng_seed)
 
 ### Color scheme:
 # Uni Tuebingen corporate colors: primary
@@ -45,10 +53,20 @@ st.set_page_config(
 )
 
 st.sidebar.markdown("""# The Themis Mechanism""")
+if st.sidebar.button("Resample countries' preferences"):
+    st.session_state.rng_seed = int(np.random.SeedSequence().entropy) % (2**31)
 UPPER = 122
 LOWER = 5
 
-price_preference = st.sidebar.slider("Your preferred price for CO2 emissions", min_value=LOWER, max_value=UPPER, value=60, step=1)
+
+
+price_preference = st.sidebar.slider(
+    "Your preferred price for CO2 emissions",
+    min_value=LOWER,
+    max_value=UPPER,
+    value=60,
+    step=1,
+)
 
 ### LOAD DATA:
 df = pd.read_csv("themis_data.csv")
@@ -74,29 +92,68 @@ df_current["share_of_global"] = (
     df_current["emissions_total_as_share_of_global"]
     / df_current["emissions_total_as_share_of_global"].sum()
 )
+df_current.reset_index(inplace=True, drop=True)
 
 N = len(df_current)
 shares = df_current["share_of_global"].values
+shares_pp = df_current["emissions_total_per_capita"].values
+
+
+### some preparation for an overcomplicated diffusion sampling model:
+def Build_Brownian_Bridge(N):
+    # the covariance of a Brownian bridge on [0, 1] is:
+    k = lambda x, y: np.minimum(x, y) - x * y
+    # grid of N points between 0 and 1:
+    x = np.linspace(0, 1, N)
+    # compute the covariance matrix:
+    K = k(x[:, None], x[None, :])
+    # and its eigendecomposition:
+    EWs, EVs = np.linalg.eigh(K)
+
+    # with this we can make a function that samples from the Brownian bridge:
+    def sample(S):
+        # sample from a standard normal distribution:
+        z = rng.normal(0, 1, (len(x), S))
+        # and transform it using the eigendecomposition:
+        return EVs @ (np.sqrt(EWs)[:, None] * z)
+
+    return x, K, sample
+
+x, K, sample = Build_Brownian_Bridge(101)
+bridge = sample(N)
 
 ### Sample price preferences for each country:
-
 sample_model = st.sidebar.selectbox(
     "Sample price preferences for the other countries from a distribution",
     [
         "Independent Uniform",
-        "Correlated with Share of Global Emissions",
-        "Anti-correlated with Share of Global Emissions",
+        "Diffusion from Share of Global Emissions",
     ],
 )
-
-rng = np.random.default_rng(seed=0)
+prices_start = rng.uniform(size=N, low=LOWER, high=UPPER)
+contribution_order = np.argsort(shares_pp) 
+prices_end = np.zeros_like(prices_start)
+# at the end, the prices are sorted according to the contribution order:
+prices_end[contribution_order] = np.sort(prices_start)
 
 if sample_model == "Independent Uniform":
-    price_preferences = rng.uniform(size=N, low=LOWER, high=UPPER)
-elif sample_model == "Correlated with Share of Global Emissions":
-    price_preferences = LOWER + (UPPER - LOWER) * df_current["share_of_global"].values
-elif sample_model == "Anti-correlated with Share of Global Emissions":
-    price_preferences = UPPER - (UPPER - LOWER) * df_current["share_of_global"].values
+    price_preferences = prices_start
+elif sample_model == "Diffusion from Share of Global Emissions":
+    a = st.sidebar.slider(
+        "randomness control parameter",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.0,
+        step=0.01,
+    ) # this has 101 values
+    
+    prices = (
+        prices_start[None, :]
+        + 5 * bridge
+        + (prices_end - prices_start)[None, :]
+        * np.linspace(0, 1, bridge.shape[0])[:, None]
+    )
+    price_preferences = prices[int(a*100.0), :].copy().ravel()
 
 # set my price:
 price_preferences[countries == country] = price_preference
@@ -107,11 +164,20 @@ SF = (price_preferences[None, :] < xplot[:, None]) * shares[None, :]
 SF = 1 - SF.sum(axis=1)
 
 ### PLOT:
-fig, ax = plt.subplots()
-bars = ax.bar(
-    price_preferences, shares, width=1.0, color=tue_blue, label="countries"
+fig, axs = plt.subplots(2,1, height_ratios=[2, 1], sharex=True)
+ax = axs[0]
+bars = ax.bar(price_preferences, shares, width=1.0, color=tue_blue, label="countries")
+ax.axvline(
+    price_preference,
+    color=tue_blue,
+    lw=0.75,
+    label=f"your price: {price_preference} EUR/tCO2e",
 )
-ax.axvline(price_preference, color=tue_blue, lw=0.75, label=f"your price: {price_preference} EUR/tCO2e")
+
+ax.spines["left"].set_color(tue_blue)
+# and the ticks:
+ax.tick_params(axis="y", colors=tue_blue)
+
 
 ax2 = ax.twinx()
 cov = ax2.plot(xplot, SF, color=tue_blue, label="achieved coverage")
@@ -154,9 +220,7 @@ ax2.set_ylim(0, 1)
 ax3.set_ylim(0, UPPER + 5)
 ax4.set_ylim(0, (xplot * SF).max() * 1.1)
 max_location = np.argmax(xplot * SF)
-ax.axvline(
-    x=xplot[max_location], color=tue_red, linestyle="-", label="Themis price"
-)
+ax.axvline(x=xplot[max_location], color=tue_red, linestyle="-", label="Themis price")
 
 st.sidebar.markdown(
     f"""
@@ -164,5 +228,9 @@ st.sidebar.markdown(
 ### Themis price: {xplot[max_location]:.1f} EUR/tCO2e
 """
 )
+
+ax = axs[1]
+ax.bar(price_preferences, shares_pp, width=1.0, color=tue_lightgreen, label="countries")
+ax.set_ylabel("emissions per capita [tCO2e pp]", fontsize='xx-small')
 
 st.pyplot(fig)
