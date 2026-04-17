@@ -55,8 +55,10 @@ df = pd.read_csv("themis_data.csv")
 df_current = df[df["year"] == 2024]
 # remove "World":
 df_current = df_current[df_current["entity"] != "World"]
-# actually, remove everyone with code "NaN" (Those are regions, not countries, e.g. "World", "Africa", "Asia", ...)
+# remove everyone with code "NaN" (Those are regions, not countries, e.g. "World", "Africa", "Asia", ...)
 df_current = df_current[~df_current["code"].isna()]
+# remove everyone whose code starts with "OWID" (Those are also regions, not countries, e.g. "European Union", "High-income countries", ...):
+df_current = df_current[~df_current["code"].str.startswith("OWID")]
 
 countries = df_current["entity"].values
 country = st.sidebar.selectbox(
@@ -64,10 +66,15 @@ country = st.sidebar.selectbox(
     countries,
 )
 
+# df_current["share_of_global"] = (
+#     df_current["emissions_total_per_capita"]
+#     / df_current["emissions_total_per_capita"].sum()
+# )
 df_current["share_of_global"] = (
-    df_current["emissions_total_per_capita"]
-    / df_current["emissions_total_per_capita"].sum()
+    df_current["emissions_total_as_share_of_global"]
+    / df_current["emissions_total_as_share_of_global"].sum()
 )
+
 N = len(df_current)
 shares = df_current["share_of_global"].values
 
@@ -99,11 +106,6 @@ xplot = np.linspace(0, UPPER + 5, 1000)
 SF = (price_preferences[None, :] < xplot[:, None]) * shares[None, :]
 SF = 1 - SF.sum(axis=1)
 
-st.sidebar.markdown(f"""
-### Your preferred price: {price_preference} EUR/tCO2e
-### Themis price: {xplot[np.argmin(np.abs(xplot - price_preference))]:.1f} EUR/tCO2e
-""")
-
 ### PLOT:
 fig, ax = plt.subplots()
 bars = ax.bar(
@@ -113,13 +115,26 @@ ax.axvline(price_preference, color=tue_blue, lw=0.75, label=f"your price: {price
 
 ax2 = ax.twinx()
 cov = ax2.plot(xplot, SF, color=tue_blue, label="achieved coverage")
+# also set the color of the spine:
+ax2.spines["right"].set_color(tue_blue)
+# and the ticks:
+ax2.tick_params(axis="y", colors=tue_blue)
+
 ax3 = ax.twinx()
 # make extra third yaxis:
-ax3.spines["right"].set_position(("outward", 30))
+ax3.spines["right"].set_position(("outward", 40))
+# also set the color of the spine:
+ax3.spines["right"].set_color(tue_green)
+# and the ticks:
+ax3.tick_params(axis="y", colors=tue_green)
 gsp = ax3.plot(xplot, xplot, color=tue_green, label="global set price")
 
 ax4 = ax.twinx()
-ax4.spines["right"].set_position(("outward", 70))
+ax4.spines["right"].set_position(("outward", 90))
+# also set the color of the spine:
+ax4.spines["right"].set_color(tue_red)
+# and the ticks:
+ax4.tick_params(axis="y", colors=tue_red)
 tr = ax4.plot(xplot, xplot * SF, color=tue_red, label="Themis revenue")
 
 ax.set_xlabel(r"preferred price $p$ [EUR/tCO2e]")
@@ -141,6 +156,13 @@ ax4.set_ylim(0, (xplot * SF).max() * 1.1)
 max_location = np.argmax(xplot * SF)
 ax.axvline(
     x=xplot[max_location], color=tue_red, linestyle="-", label="Themis price"
+)
+
+st.sidebar.markdown(
+    f"""
+### Your preferred price: {price_preference} EUR/tCO2e
+### Themis price: {xplot[max_location]:.1f} EUR/tCO2e
+"""
 )
 
 st.pyplot(fig)
