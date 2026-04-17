@@ -126,7 +126,7 @@ sample_model = st.sidebar.selectbox(
     "Sample price preferences for the other countries from a distribution",
     [
         "Independent Uniform",
-        "Polluters are generous",
+        "Polluters are ambitious",
         "Polluters are stingy",
     ],
 )
@@ -134,7 +134,7 @@ prices_start = rng.uniform(size=N, low=LOWER, high=UPPER)
 
 if sample_model == "Independent Uniform":
     price_preferences = prices_start
-elif sample_model == "Polluters are generous":
+elif sample_model == "Polluters are ambitious":
     contribution_order = np.argsort(shares_pp) 
     prices_end = np.zeros_like(prices_start)
     # at the end, the prices are sorted according to the contribution order:
