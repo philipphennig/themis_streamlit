@@ -59,7 +59,6 @@ UPPER = 122
 LOWER = 5
 
 
-
 price_preference = st.sidebar.slider(
     "Your preferred price for CO2 emissions",
     min_value=LOWER,
@@ -119,7 +118,7 @@ def Build_Brownian_Bridge(N):
 
     return x, K, sample
 
-x, K, sample = Build_Brownian_Bridge(101)
+x, K, sample = Build_Brownian_Bridge(11)
 bridge = sample(N)
 
 ### Sample price preferences for each country:
@@ -127,33 +126,56 @@ sample_model = st.sidebar.selectbox(
     "Sample price preferences for the other countries from a distribution",
     [
         "Independent Uniform",
-        "Diffusion from Share of Global Emissions",
+        "Polluters are generous",
+        "Polluters are stingy",
     ],
 )
 prices_start = rng.uniform(size=N, low=LOWER, high=UPPER)
-contribution_order = np.argsort(shares_pp) 
-prices_end = np.zeros_like(prices_start)
-# at the end, the prices are sorted according to the contribution order:
-prices_end[contribution_order] = np.sort(prices_start)
 
 if sample_model == "Independent Uniform":
     price_preferences = prices_start
-elif sample_model == "Diffusion from Share of Global Emissions":
+elif sample_model == "Polluters are generous":
+    contribution_order = np.argsort(shares_pp) 
+    prices_end = np.zeros_like(prices_start)
+    # at the end, the prices are sorted according to the contribution order:
+    prices_end[contribution_order] = np.sort(prices_start)
+
     a = st.sidebar.slider(
         "randomness control parameter",
         min_value=0.0,
         max_value=1.0,
         value=0.0,
-        step=0.01,
-    ) # this has 101 values
-    
+        step=0.1,
+    ) # this has 11 values
+
     prices = (
         prices_start[None, :]
         + 5 * bridge
         + (prices_end - prices_start)[None, :]
         * np.linspace(0, 1, bridge.shape[0])[:, None]
     )
-    price_preferences = prices[int(a*100.0), :].copy().ravel()
+    price_preferences = prices[int(a*10.0), :].copy().ravel()
+elif sample_model == "Polluters are stingy":
+    contribution_order = np.argsort(shares_pp, axis=0)[::-1] 
+    prices_end = np.zeros_like(prices_start)
+    # at the end, the prices are sorted according to the contribution order:
+    prices_end[contribution_order] = np.sort(prices_start)
+
+    a = st.sidebar.slider(
+        "randomness control parameter",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.0,
+        step=0.1,
+    )  # this has 11 values
+
+    prices = (
+        prices_start[None, :]
+        + 5 * bridge
+        + (prices_end - prices_start)[None, :]
+        * np.linspace(0, 1, bridge.shape[0])[:, None]
+    )
+    price_preferences = prices[int(a * 10.0), :].copy().ravel()
 
 # set my price:
 price_preferences[countries == country] = price_preference
