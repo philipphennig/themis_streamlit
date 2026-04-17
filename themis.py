@@ -186,7 +186,7 @@ SF = (price_preferences[None, :] < xplot[:, None]) * shares[None, :]
 SF = 1 - SF.sum(axis=1)
 
 ### PLOT:
-fig, axs = plt.subplots(2,1, height_ratios=[2, 1], sharex=True)
+fig, axs = plt.subplots(2,1, height_ratios=[5, 1], sharex=True)
 ax = axs[0]
 bars = ax.bar(price_preferences, shares, width=1.0, color=tue_blue, label="countries")
 ax.axvline(
@@ -253,6 +253,6 @@ st.sidebar.markdown(
 
 ax = axs[1]
 ax.bar(price_preferences, shares_pp, width=1.0, color=tue_lightgreen, label="countries")
-ax.set_ylabel("emissions per capita [tCO2e pp]", fontsize='xx-small')
+ax.set_ylabel("emissions\n per capita\n [tCO2e pp]", fontsize='xx-small')
 
 st.pyplot(fig)
