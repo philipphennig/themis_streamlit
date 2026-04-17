@@ -144,7 +144,7 @@ elif sample_model == "Polluters are generous":
         "randomness control parameter",
         min_value=0.0,
         max_value=1.0,
-        value=0.0,
+        value=0.5,
         step=0.1,
     ) # this has 11 values
 
@@ -165,7 +165,7 @@ elif sample_model == "Polluters are stingy":
         "randomness control parameter",
         min_value=0.0,
         max_value=1.0,
-        value=0.0,
+        value=0.5,
         step=0.1,
     )  # this has 11 values
 
