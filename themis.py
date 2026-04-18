@@ -70,7 +70,8 @@ countries = df["entity"].values
 shares    = df["share_of_global"].values
 shares_pp = df["emissions_total_per_capita"].values
 
-country = st.sidebar.selectbox("Your country", countries)
+default_country_idx = next((i for i, c in enumerate(countries) if c == "United Kingdom"), 0)
+country = st.sidebar.selectbox("Your country", countries, index=default_country_idx)
 
 # ── Sampling model ────────────────────────────────────────────────────────────
 
