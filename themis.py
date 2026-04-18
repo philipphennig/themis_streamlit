@@ -27,9 +27,29 @@ if "price_range" not in st.session_state:
 # itself is placed at the visual bottom of the sidebar.
 LOWER, UPPER = st.session_state.price_range
 
+# ── Main-frame layout placeholders (in desired visual order) ──────────────────
+# Containers are rendered where they are created; their content can be filled
+# later, which lets us define the overlay checkboxes before the figure is built
+# while they appear visually below it.
+
+summary_container = st.container()
+plot_container    = st.container()
+overlay_container = st.container()
+
+with overlay_container:
+    st.markdown("**Show overlays**")
+    ov_col1, ov_col2, ov_col3 = st.columns(3)
+    show_coverage  = ov_col1.checkbox("Achieved coverage", value=True)
+    show_set_price = ov_col2.checkbox("Global set price",  value=True)
+    show_revenue   = ov_col3.checkbox("Themis revenue",    value=True)
+
 # ── Sidebar controls ──────────────────────────────────────────────────────────
 
-st.sidebar.markdown("# The Themis Mechanism")
+st.sidebar.markdown(
+    """
+                    # The Themis Mechanism
+                    For more information, see [Carl Rasmussen's website](https://mlg.eng.cam.ac.uk/carl/climate/)."""
+)
 
 if st.sidebar.button("Resample countries' preferences"):
     st.session_state.rng_seed = int(np.random.SeedSequence().entropy) % (2**31)
@@ -66,13 +86,6 @@ if sample_model != "Independent Uniform":
         min_value=0.0, max_value=1.0, value=0.5, step=0.1,
     )
 
-# ── Visualisation options ─────────────────────────────────────────────────────
-
-st.sidebar.markdown("**Show overlays**")
-show_coverage  = st.sidebar.checkbox("Achieved coverage",  value=True)
-show_set_price = st.sidebar.checkbox("Global set price",   value=True)
-show_revenue   = st.sidebar.checkbox("Themis revenue",     value=True)
-
 # ── Price range (placed last so it appears at the bottom of the sidebar) ──────
 
 st.sidebar.markdown("---")
@@ -89,11 +102,11 @@ if price_range != (LOWER, UPPER):
     st.rerun()
 
 # ── Random draws (cached in session state) ────────────────────────────────────
-# prices_base and bridge depend only on the seed and the number of countries.
+# prices_base and bridge depend only on the seed, country count, and price range.
 # They are pre-computed once and reused across reruns so that moving the alpha
 # slider (which only re-indexes the bridge) does not trigger a full resample.
 
-draws_key = (st.session_state.rng_seed, len(countries))
+draws_key = (st.session_state.rng_seed, len(countries), LOWER, UPPER)
 if st.session_state.get("draws_key") != draws_key:
     rng = np.random.default_rng(seed=st.session_state.rng_seed)
     prices_base, bridge = precompute_random_draws(rng, len(countries), LOWER, UPPER)
@@ -116,20 +129,19 @@ price_preferences[countries == country] = price_preference
 
 xplot, SF, themis_price = compute_themis_price(price_preferences, shares, UPPER)
 
-# ── Sidebar summary ───────────────────────────────────────────────────────────
+# ── Fill main-frame containers ────────────────────────────────────────────────
 
-st.sidebar.markdown(f"""
-### Your preferred price: {price_preference} EUR/tCO2e
-### Themis price: {themis_price:.1f} EUR/tCO2e
-""")
+with summary_container:
+    s_col1, s_col2 = st.columns(2)
+    s_col1.markdown(f"### Your preferred price: {price_preference} EUR/tCO₂e")
+    s_col2.markdown(f"### Themis price: {themis_price:.1f} EUR/tCO₂e")
 
-# ── Main display ──────────────────────────────────────────────────────────────
-
-fig = make_figure(
-    price_preferences, shares, shares_pp,
-    price_preference, xplot, SF, themis_price,
-    show_coverage=show_coverage,
-    show_set_price=show_set_price,
-    show_revenue=show_revenue,
-)
-st.pyplot(fig)
+with plot_container:
+    fig = make_figure(
+        price_preferences, shares, shares_pp,
+        price_preference, xplot, SF, themis_price,
+        show_coverage=show_coverage,
+        show_set_price=show_set_price,
+        show_revenue=show_revenue,
+    )
+    st.pyplot(fig)
