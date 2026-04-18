@@ -141,6 +141,7 @@ with plot_container:
     fig = make_figure(
         price_preferences, shares, shares_pp,
         price_preference, xplot, SF, themis_price,
+        countries=countries,
         show_coverage=show_coverage,
         show_set_price=show_set_price,
         show_revenue=show_revenue,

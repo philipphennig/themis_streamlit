@@ -34,6 +34,15 @@ _RIGHT_AXES = [
 ]
 
 
+LABELLED_COUNTRIES = {
+    "China":                "China",
+    "India":                "India",
+    "European Union (27)":  "EU27",
+    "United Kingdom":       "UK",
+    "United States":        "USA",
+}
+
+
 def make_figure(
     price_preferences: np.ndarray,
     shares: np.ndarray,
@@ -42,6 +51,7 @@ def make_figure(
     xplot: np.ndarray,
     SF: np.ndarray,
     themis_price: float,
+    countries: np.ndarray | None = None,
     show_coverage: bool = True,
     show_set_price: bool = True,
     show_revenue: bool = True,
@@ -59,8 +69,32 @@ def make_figure(
     # ── Top panel ────────────────────────────────────────────────────────────
     ax = axs[0]
     ax.bar(price_preferences, shares, width=1.0, color=rgb.tue_blue)
+
+    # Labels on selected country bars
+    if countries is not None:
+        for entity, label in LABELLED_COUNTRIES.items():
+            idx = np.where(countries == entity)[0]
+            if len(idx):
+                ax.text(
+                    price_preferences[idx[0]], shares[idx[0]], label,
+                    ha="center", va="bottom", fontsize="xx-small", color=rgb.tue_blue,
+                )
+
+    # Vline for the user's price with text label
     ax.axvline(user_price, color=rgb.tue_blue, lw=0.75)
+    ax.text(
+        user_price, 0.99, f"your price: {user_price:.0f}",
+        transform=ax.get_xaxis_transform(),
+        ha="right", va="top", fontsize="xx-small", color=rgb.tue_blue, rotation=90,
+    )
+
+    # Vline for the Themis price with text label
     ax.axvline(themis_price, color=rgb.tue_red, linestyle="-")
+    ax.text(
+        themis_price, 0.99, f"Themis price: {themis_price:.0f}",
+        transform=ax.get_xaxis_transform(),
+        ha="right", va="top", fontsize="xx-small", color=rgb.tue_red, rotation=90,
+    )
     _style_spine(ax, "left", rgb.tue_blue)
     ax.set_xlabel(r"preferred price $p$ [EUR/tCO2e]")
     ax.set_ylabel("share of global emissions")
