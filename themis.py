@@ -8,11 +8,11 @@ from plot import make_figure
 # ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="The Themis Mechanism",
+    page_title="The Themis Mechanism: price elicitation",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={"About": "originally built by Philipp Hennig, 2026 in support of Carl Rasmussen. Public domain."},
+    menu_items={"About": "originally built by Philipp Hennig, 2026 in support of Carl Edward Rasmussen. Public domain."},
 )
 
 # ── Session state ─────────────────────────────────────────────────────────────
@@ -47,8 +47,8 @@ with overlay_container:
 
 st.sidebar.markdown(
     """
-                    # The Themis Mechanism
-                    For more information, see [Carl Rasmussen's website](https://mlg.eng.cam.ac.uk/carl/climate/)."""
+                    # The Themis Mechanism: price elicitation
+                    For more information, see [Carl Edward Rasmussen's website](https://mlg.eng.cam.ac.uk/carl/climate/)."""
 )
 
 if st.sidebar.button("Resample countries' preferences"):
