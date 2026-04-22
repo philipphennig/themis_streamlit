@@ -40,7 +40,7 @@ with overlay_container:
     st.markdown("**Show overlays**")
     ov_col1, ov_col2, ov_col3 = st.columns(3)
     show_coverage  = ov_col1.checkbox("Achieved coverage", value=True)
-    show_set_price = ov_col2.checkbox("Global set price",  value=True)
+    show_set_price = ov_col2.checkbox("Global set price",  value=False)
     show_revenue   = ov_col3.checkbox("Themis revenue",    value=True)
 
 # ── Sidebar controls ──────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ _RIGHT_AXES = [
         rgb.tue_green,
         "global set price $p$ [EUR/tCO2e]",
         lambda xplot, *_: (0, xplot.max()),
-        lambda ax, xplot, *_: ax.plot(xplot, xplot, color=rgb.tue_green),
+        lambda ax, xplot, *_: ax.plot(xplot, xplot, color=rgb.tue_green, linestyle="--"),
     ),
     (
         "revenue",
