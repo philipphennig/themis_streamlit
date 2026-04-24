@@ -13,7 +13,7 @@ _RIGHT_AXES = [
     (
         "coverage",
         rgb.tue_blue,
-        "achieved coverage",
+        "lost coverage",
         lambda *_: (0, 1),
         lambda ax, xplot, SF: ax.plot(xplot, SF, color=rgb.tue_blue),
     ),
