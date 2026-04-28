@@ -21,6 +21,8 @@ if "rng_seed" not in st.session_state:
     st.session_state.rng_seed = 0
 if "price_range" not in st.session_state:
     st.session_state.price_range = (5, 122)
+if "country_preferences" not in st.session_state:
+    st.session_state.country_preferences = {}
 
 # LOWER/UPPER are read from session state so that all widgets below (especially
 # the price_preference slider) see the current range even though the range slider
@@ -55,13 +57,6 @@ st.sidebar.markdown(
 if st.sidebar.button("Resample countries' preferences"):
     st.session_state.rng_seed = int(np.random.SeedSequence().entropy) % (2**31)
 
-price_preference = st.sidebar.slider(
-    "Your preferred price for CO2 emissions",
-    min_value=LOWER, max_value=UPPER,
-    value=min(max(60, LOWER), UPPER),  # clamp default to current range
-    step=1,
-)
-
 africa_joint = st.sidebar.checkbox("Africa negotiates jointly")
 
 # ── Data ──────────────────────────────────────────────────────────────────────
@@ -73,6 +68,23 @@ shares_pp = df["emissions_total_per_capita"].values
 
 default_country_idx = next((i for i, c in enumerate(countries) if c == "United Kingdom"), 0)
 country = st.sidebar.selectbox("Your country", countries, index=default_country_idx)
+
+# on_change fires only when the user actively moves the slider (not on country switch),
+# so we store only explicitly set preferences, leaving other countries' random values intact.
+def _save_pref():
+    c = st.session_state._pref_country
+    st.session_state.country_preferences[c] = st.session_state[f"price_pref_{c}"]
+
+st.session_state._pref_country = country
+
+price_preference = st.sidebar.slider(
+    "Your preferred price for CO2 emissions",
+    min_value=LOWER, max_value=UPPER,
+    value=min(max(60, LOWER), UPPER),  # clamp default to current range
+    step=1,
+    key=f"price_pref_{country}",
+    on_change=_save_pref,
+)
 
 # ── Sampling model ────────────────────────────────────────────────────────────
 
@@ -124,7 +136,12 @@ price_preferences = sample_price_preferences(
     alpha=alpha,
 )
 
-# Override with the user's own stated preference
+# Apply explicitly-set preferences for countries the user has previously adjusted
+for c, pref in st.session_state.country_preferences.items():
+    mask = countries == c
+    if mask.any():
+        price_preferences[mask] = pref
+# Always apply the live slider value for the currently selected country
 price_preferences[countries == country] = price_preference
 
 # ── Themis computation ────────────────────────────────────────────────────────
