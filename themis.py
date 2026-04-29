@@ -153,17 +153,16 @@ xplot, SF, themis_price = compute_themis_price(price_preferences, shares, UPPER)
 with explanations:
     st.markdown(
         """
-        The Themis mechanism is a method [proposed by Carl Edward Rasmussen](https://mlg.eng.cam.ac.uk/carl/climate/) for eliciting a global CO₂ price from a set of countries with heterogeneous preferences.
-        It finds the global price that maximizes the global CO₂ revenue if every country only gets to choose whether to participate (i.e., pay the set price on their emissions) or not, without any side payments or transfers.
+        The [Themis Mechanism](https://mlg.eng.cam.ac.uk/carl/climate) by [Carl Edward Rasmussen](https://mlg.eng.cam.ac.uk/carl/) is a proposal for a global cooperative framework for addressing climate change. It relies on reciprocity and common commitments. Part of the proposal is a price elicitation process, which   determines a global CO₂e price from a set of countries with heterogeneous preferences. It finds the global price that maximizes the global CO₂e revenue (a proxy for the climate impact) when every country only gets to choose whether to participate (i.e., pay the set price on their emissions) or not. No nation is ever asked to do anything inconsistent with their expressed preferences.
 
-        This app simulates the Themis mechanism. Use the sidebar controls to explore how the mechanism works under different assumptions about the distribution of countries' price preferences and the resulting price and coverage.
+        This app simulates the price elicitation process of the Themis Mechanism. Use the sidebar controls to explore how the mechanism works under different assumptions about the distribution of countries' price preferences and the resulting price and coverage.
 
         - **Pick your country**: Select the country you want to represent in the mechanism. This will determine which price preference you control directly.
-        - **Your preferred price**: Set your own preferred CO₂ price using the slider. This represents your country's stated preference in the mechanism.
+        - **Your preferred price**: Set your own preferred CO₂e price using the slider. This represents your country's stated preference in the mechanism. Sequentially choose prices for other nations to build a global picture.
         - **Sampled preferences**: Since this is a simulation, the other countries' preferences are sampled from a probability distribution. You can choose the between 
             + an independent uniform distribution (every country's preference is a random choice in the specified price range, without any correlation between countries),
             + the other two models introduce correlations between countries' preferences, with the slider controlling the strength of these correlations. If you set the randomness control parameter to 0, you get back the independent uniform model. I you set it to 1, the preferences are perfectly ordered by per-capita emissions, either from high to low or from low to high depending on the model. Choices in between give you varying degrees of correlation.
-        - **Themis price**: The global CO₂ price determined by the Themis mechanism based on all countries' preferences and their shares of global emissions.
+        - **Themis price**: The global CO₂e price determined by the Themis Mechanism based on all countries' preferences and their shares of global emissions.
         - **Overlays**: Use the checkboxes below to show or hide additional information on the plot:
             + *achieved coverage* is the fraction of global emissions covered by the set price, under the assumption that each country with a price preference above the set price chooses to participate and pay the set price on their emissions. 
             + *global set price* is the global CO₂ price to be determined by the mechanism. It can be optionally overlaid as a dashed line for reference, because the Themis price is the price that maximizes the *product* of the set price and the coverage
