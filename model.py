@@ -74,8 +74,7 @@ def sample_price_preferences(
 def compute_themis_price(
     price_preferences: np.ndarray,
     shares: np.ndarray,
-    upper: float,
-    n_points: int = 1000,
+    upper: float
 ) -> tuple[np.ndarray, np.ndarray, float]:
     """
     Compute the Themis revenue-maximising carbon price.
@@ -86,12 +85,13 @@ def compute_themis_price(
     Returns
     -------
     xplot        : price grid [0, upper + 5]
-    SF           : survival function — fraction of global emissions still covered at each price
+    SF           : survival function — fraction of global emissions covered at each price
     themis_price : revenue-maximising price
     """
-    xplot = np.linspace(0, upper + 5, n_points)
-    SF = 1 - ((price_preferences[None, :] < xplot[:, None]) * shares[None, :]).sum(axis=1)
-    themis_price = xplot[np.argmax(xplot * SF)]
+    idx = np.argsort(price_preferences);
+    xplot = np.append(np.append(0, price_preferences[idx]), upper + 5)
+    SF = np.append(np.append(1, 1 - np.cumsum(shares[idx])), 0)
+    themis_price = xplot[np.argmax(xplot[1:] * SF[:-1]) + 1]
     return xplot, SF, themis_price
 
 

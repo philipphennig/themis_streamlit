@@ -15,7 +15,7 @@ _RIGHT_AXES = [
         rgb.tue_blue,
         "achieved coverage",
         lambda *_: (0, 1),
-        lambda ax, xplot, SF: ax.plot(xplot, SF, color=rgb.tue_blue),
+        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:])), np.vstack((SF[:-1], SF[:-1])), color=rgb.tue_blue),
     ),
     (
         "set_price",
@@ -29,7 +29,7 @@ _RIGHT_AXES = [
         rgb.tue_red,
         "Themis revenue [EUR/tCO2e]",
         lambda xplot, SF: (0, (xplot * SF).max() * 1.1),
-        lambda ax, xplot, SF: ax.plot(xplot, xplot * SF, color=rgb.tue_red),
+        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:])), np.vstack((xplot[:-1]*SF[:-1], xplot[1:]*SF[:-1])), color=rgb.tue_red),
     ),
 ]
 
