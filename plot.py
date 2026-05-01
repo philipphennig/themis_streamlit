@@ -15,7 +15,7 @@ _RIGHT_AXES = [
         rgb.tue_blue,
         "achieved coverage",
         lambda *_: (0, 1),
-        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:])), np.vstack((SF[:-1], SF[:-1])), color=rgb.tue_blue),
+        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:], xplot[1:])), np.vstack((SF[:-1], SF[:-1], SF[1:])), color=rgb.tue_blue),
     ),
     (
         "set_price",
@@ -29,7 +29,7 @@ _RIGHT_AXES = [
         rgb.tue_red,
         "Themis revenue [EUR/tCO2e]",
         lambda xplot, SF: (0, (xplot * SF).max() * 1.1),
-        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:])), np.vstack((xplot[:-1]*SF[:-1], xplot[1:]*SF[:-1])), color=rgb.tue_red),
+        lambda ax, xplot, SF: ax.plot(np.vstack((xplot[:-1], xplot[1:], xplot[1:])), np.vstack((xplot[:-1]*SF[:-1], xplot[1:]*SF[:-1], xplot[1:]*SF[1:])), color=rgb.tue_red),
     ),
 ]
 
@@ -68,7 +68,7 @@ def make_figure(
 
     # ── Top panel ────────────────────────────────────────────────────────────
     ax = axs[0]
-    ax.bar(price_preferences, shares, width=1.0, color=rgb.tue_blue)
+    ax.bar(price_preferences, shares, width=1.0, color=rgb.tue_orange)
 
     # Labels on selected country bars
     if countries is not None:
@@ -95,10 +95,10 @@ def make_figure(
         transform=ax.get_xaxis_transform(),
         ha="right", va="top", fontsize="xx-small", color=rgb.tue_red, rotation=90,
     )
-    _style_spine(ax, "left", rgb.tue_blue)
+    _style_spine(ax, "left", rgb.tue_orange)
     ax.set_xlabel(r"preferred price $p$ [EUR/tCO2e]")
     ax.set_ylabel("share of global emissions")
-    ax.yaxis.label.set_color(rgb.tue_blue)
+    ax.yaxis.label.set_color(rgb.tue_orange)
     ax.set_xlim(0, xplot.max())
     ax.xaxis.set_major_locator(plt.MultipleLocator(20))
     ax.xaxis.set_minor_locator(plt.MultipleLocator(5))
