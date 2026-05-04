@@ -23,7 +23,9 @@ if "price_range" not in st.session_state:
     st.session_state.price_range = (5, 122)
 if "country_preferences" not in st.session_state:
     st.session_state.country_preferences = {}
-
+if "selected_country" not in st.session_state:
+    st.session_state.selected_country = "United Kingdom"
+ 
 # LOWER/UPPER are read from session state so that all widgets below (especially
 # the price_preference slider) see the current range even though the range slider
 # itself is placed at the visual bottom of the sidebar.
@@ -66,8 +68,15 @@ countries = df["entity"].values
 shares    = df["share_of_global"].values
 shares_pp = df["emissions_total_per_capita"].values
 
-default_country_idx = next((i for i, c in enumerate(countries) if c == "United Kingdom"), 0)
-country = st.sidebar.selectbox("Your country", countries, index=default_country_idx)
+def country_label(c: str) -> str:
+    if c in st.session_state.country_preferences:
+        return f"{c} 🔒"
+    return c
+
+country = st.sidebar.selectbox(
+    "Your country", countries,
+    index=list(countries).index(st.session_state.selected_country), format_func=country_label)
+st.session_state.selected_country = country
 
 # on_change fires only when the user actively moves the slider (not on country switch),
 # so we store only explicitly set preferences, leaving other countries' random values intact.
