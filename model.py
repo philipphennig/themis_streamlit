@@ -74,25 +74,34 @@ def sample_price_preferences(
 def compute_themis_price(
     price_preferences: np.ndarray,
     shares: np.ndarray,
+    shares_pp: np.ndarray,
     upper: float
-) -> tuple[np.ndarray, np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, float, float]:
     """
     Compute the Themis revenue-maximising carbon price.
 
     The Themis price p* maximises p * (fraction of global emissions from countries
-    whose preferred price is at least p).
+    whose preferred price is at least p).  Coalition members are all countries
+    whose price preference is at or above p*.
 
     Returns
     -------
-    xplot        : price grid [0, upper + 5]
-    SF           : survival function — fraction of global emissions covered at each price
-    themis_price : revenue-maximising price
+    xplot            : price grid [0, upper + 5]
+    SF               : survival function — fraction of global emissions covered at each price
+    themis_price     : revenue-maximising price
+    coalition_avg_pp : population-weighted mean per-capita emissions of coalition members
+                       (= total coalition emissions / total coalition population) [tCO2e pp]
     """
-    idx = np.argsort(price_preferences);
+    idx = np.argsort(price_preferences)
     xplot = np.append(np.append(0, price_preferences[idx]), upper + 5)
     SF = np.append(np.append(1, 1 - np.cumsum(shares[idx])), 0)
     themis_price = xplot[np.argmax(xplot[1:] * SF[:-1]) + 1]
-    return xplot, SF, themis_price
+    coalition_mask = price_preferences >= themis_price
+    s = shares[coalition_mask]
+    pp = shares_pp[coalition_mask]
+    valid = np.isfinite(pp) & (pp > 0)
+    coalition_avg_pp = float(s[valid].sum() / (s[valid] / pp[valid]).sum()) if valid.any() else float("nan")
+    return xplot, SF, themis_price, coalition_avg_pp
 
 
 def _brownian_bridge_samples(

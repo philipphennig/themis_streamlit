@@ -59,6 +59,9 @@ st.sidebar.markdown(
 if st.sidebar.button("Resample countries' preferences"):
     st.session_state.rng_seed = int(np.random.SeedSequence().entropy) % (2**31)
 
+if st.sidebar.button("Reset locked prices"):
+    st.session_state.country_preferences = {}
+
 africa_joint = st.sidebar.checkbox("Africa negotiates jointly")
 
 # ── Data ──────────────────────────────────────────────────────────────────────
@@ -67,33 +70,6 @@ df = load_country_data(africa_joint=africa_joint)
 countries = df["entity"].values
 shares    = df["share_of_global"].values
 shares_pp = df["emissions_total_per_capita"].values
-
-def country_label(c: str) -> str:
-    if c in st.session_state.country_preferences:
-        return f"{c} 🔒"
-    return c
-
-country = st.sidebar.selectbox(
-    "Your country", countries,
-    index=list(countries).index(st.session_state.selected_country), format_func=country_label)
-st.session_state.selected_country = country
-
-# on_change fires only when the user actively moves the slider (not on country switch),
-# so we store only explicitly set preferences, leaving other countries' random values intact.
-def _save_pref():
-    c = st.session_state._pref_country
-    st.session_state.country_preferences[c] = st.session_state[f"price_pref_{c}"]
-
-st.session_state._pref_country = country
-
-price_preference = st.sidebar.slider(
-    "Your preferred price for CO2 emissions",
-    min_value=LOWER, max_value=UPPER,
-    value=min(max(60, LOWER), UPPER),  # clamp default to current range
-    step=1,
-    key=f"price_pref_{country}",
-    on_change=_save_pref,
-)
 
 # ── Sampling model ────────────────────────────────────────────────────────────
 
@@ -108,21 +84,6 @@ if sample_model != "Independent Uniform":
         "randomness control parameter",
         min_value=0.0, max_value=1.0, value=0.5, step=0.1,
     )
-
-# ── Price range (placed last so it appears at the bottom of the sidebar) ──────
-
-st.sidebar.markdown("---")
-price_range = st.sidebar.slider(
-    "Price range [EUR/tCO2e]",
-    min_value=0, max_value=200,
-    value=(LOWER, UPPER),
-    step=1,
-)
-if price_range != (LOWER, UPPER):
-    # Persist the new range and rerun immediately so all widgets above
-    # (especially the price_preference slider) reflect the updated bounds.
-    st.session_state.price_range = price_range
-    st.rerun()
 
 # ── Random draws (cached in session state) ────────────────────────────────────
 # prices_base and bridge depend only on the seed, country count, and price range.
@@ -150,12 +111,70 @@ for c, pref in st.session_state.country_preferences.items():
     mask = countries == c
     if mask.any():
         price_preferences[mask] = pref
+
+# ── Country selector and price slider ────────────────────────────────────────
+
+# Embed lock icons in the option strings so that Streamlit sees the options
+# list change when lock status changes, forcing a fresh render immediately.
+_locked = st.session_state.country_preferences
+_label = lambda c: f"{c} 🔒" if c in _locked else c
+options = [_label(c) for c in countries]
+option_to_country = {opt: c for opt, c in zip(options, countries)}
+
+# Initialise or repair the stored value: if it's absent (first run) or stale
+# (the country just got locked so its label changed), reset from selected_country.
+if st.session_state.get("country_selector") not in option_to_country:
+    st.session_state["country_selector"] = _label(st.session_state.selected_country)
+
+country_display = st.sidebar.selectbox(
+    "Your country", options, key="country_selector"
+)
+country = option_to_country.get(country_display, countries[0])
+st.session_state.selected_country = country
+
+# on_change fires only when the user actively moves the slider (not on country switch),
+# so we store only explicitly set preferences, leaving other countries' random values intact.
+def _save_pref():
+    c = st.session_state._pref_country
+    st.session_state.country_preferences[c] = st.session_state[f"price_pref_{c}"]
+
+st.session_state._pref_country = country
+
+# Use the already-computed preference as the default; only matters when the key
+# first enters session state (i.e. a country is visited for the first time).
+_default_price = int(round(float(price_preferences[countries == country][0])))
+_default_price = min(max(_default_price, LOWER), UPPER)
+
+price_preference = st.sidebar.slider(
+    "Your preferred price for CO2 emissions",
+    min_value=LOWER, max_value=UPPER,
+    value=_default_price,
+    step=1,
+    key=f"price_pref_{country}",
+    on_change=_save_pref,
+)
+
+# ── Price range (placed last so it appears at the bottom of the sidebar) ──────
+
+st.sidebar.markdown("---")
+price_range = st.sidebar.slider(
+    "Price range [EUR/tCO2e]",
+    min_value=0, max_value=200,
+    value=(LOWER, UPPER),
+    step=1,
+)
+if price_range != (LOWER, UPPER):
+    # Persist the new range and rerun immediately so all widgets above
+    # (especially the price_preference slider) reflect the updated bounds.
+    st.session_state.price_range = price_range
+    st.rerun()
+
 # Always apply the live slider value for the currently selected country
 price_preferences[countries == country] = price_preference
 
 # ── Themis computation ────────────────────────────────────────────────────────
 
-xplot, SF, themis_price = compute_themis_price(price_preferences, shares, UPPER)
+xplot, SF, themis_price, coalition_avg_pp = compute_themis_price(price_preferences, shares, shares_pp, UPPER)
 
 # ── Fill main-frame containers ────────────────────────────────────────────────
 
@@ -184,8 +203,8 @@ with explanations:
 
 with summary_container:
     s_col1, s_col2 = st.columns(2)
-    s_col1.markdown(f"### Your preferred price: {price_preference} EUR/tCO₂e")
-    s_col2.markdown(f"### Themis price: {themis_price:.1f} EUR/tCO₂e")
+    s_col1.markdown(f"### Themis price: {themis_price:.1f} EUR/tCO₂e")
+    s_col2.markdown(f"### Coalition avg emission: {coalition_avg_pp:.1f} tCO₂e/person")
 
 with plot_container:
     fig = make_figure(
