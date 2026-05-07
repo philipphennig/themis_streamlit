@@ -2,3 +2,4 @@ pandas
 matplotlib
 streamlit
 tueplots
+streamlit_mpl_svg

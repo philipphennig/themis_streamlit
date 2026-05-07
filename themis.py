@@ -4,6 +4,7 @@ import streamlit as st
 from data import load_country_data
 from model import SAMPLE_MODELS, compute_themis_price, precompute_random_draws, sample_price_preferences
 from plot import make_figure, make_consequences_figure
+from streamlit_mpl_svg import svg_plot
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ if "country_preferences" not in st.session_state:
     st.session_state.country_preferences = {}
 if "selected_country" not in st.session_state:
     st.session_state.selected_country = "United Kingdom"
- 
+
 # LOWER/UPPER are read from session state so that all widgets below (especially
 # the price_preference slider) see the current range even though the range slider
 # itself is placed at the visual bottom of the sidebar.
@@ -224,7 +225,9 @@ with plot_container:
         show_set_price=show_set_price,
         show_revenue=show_revenue,
     )
-    st.pyplot(fig)
+    formatted_fig = svg_plot(fig)
+    st.markdown(formatted_fig["html"], unsafe_allow_html=True)
+    # st.pyplot(fig)
 
 with consequences_container:
     c_col1, c_col2 = st.columns(2)
@@ -234,4 +237,5 @@ with consequences_container:
         price_preferences, shares_pp, countries,
         themis_price, coalition_avg_pp, g,
     )
-    st.pyplot(fig_c)
+    formatted_fig_c = svg_plot(fig_c)
+    st.markdown(formatted_fig_c["html"], unsafe_allow_html=True)
