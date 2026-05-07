@@ -3,7 +3,7 @@ import streamlit as st
 
 from data import load_country_data
 from model import SAMPLE_MODELS, compute_themis_price, precompute_random_draws, sample_price_preferences
-from plot import make_figure
+from plot import make_figure, make_consequences_figure
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -36,10 +36,11 @@ LOWER, UPPER = st.session_state.price_range
 # later, which lets us define the overlay checkboxes before the figure is built
 # while they appear visually below it.
 
-explanations      = st.expander("How to use this app", expanded=False)
-summary_container = st.container()
-plot_container    = st.container()
-overlay_container = st.container()
+explanations          = st.expander("How to use this app", expanded=False)
+summary_container     = st.container()
+plot_container        = st.container()
+overlay_container     = st.container()
+consequences_container = st.container()
 
 with overlay_container:
     st.markdown("**Show overlays**")
@@ -169,6 +170,14 @@ if price_range != (LOWER, UPPER):
     st.session_state.price_range = price_range
     st.rerun()
 
+# ── Consequences parameters (affect only the bottom plot) ─────────────────────
+
+st.sidebar.markdown("---")
+g = st.sidebar.slider(
+    "Global fraction g",
+    min_value=0.0, max_value=1.0, value=0.1, step=0.01,
+)
+
 # Always apply the live slider value for the currently selected country
 price_preferences[countries == country] = price_preference
 
@@ -203,7 +212,7 @@ with explanations:
 
 with summary_container:
     s_col1, s_col2 = st.columns(2)
-    s_col1.markdown(f"### Themis price: {themis_price:.1f} EUR/tCO₂e")
+    s_col1.markdown(f"### Elicitation plot: Themis price: {themis_price:.1f} EUR/tCO₂e")
     s_col2.markdown(f"### Coalition avg emission: {coalition_avg_pp:.1f} tCO₂e/person")
 
 with plot_container:
@@ -216,3 +225,13 @@ with plot_container:
         show_revenue=show_revenue,
     )
     st.pyplot(fig)
+
+with consequences_container:
+    c_col1, c_col2 = st.columns(2)
+    c_col1.markdown(f"### Consequences plot: global fraction g = {g:.2f}")
+    c_col2.markdown(f"### Themis price: {themis_price:.1f} EUR/tCO₂e")
+    fig_c = make_consequences_figure(
+        price_preferences, shares_pp, countries,
+        themis_price, coalition_avg_pp, g,
+    )
+    st.pyplot(fig_c)
