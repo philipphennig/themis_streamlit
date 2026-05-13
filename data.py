@@ -1,16 +1,19 @@
 import pandas as pd
 import streamlit as st
 
+_CSV = "themis_data.csv"
+
 # ISO 3166-1 alpha-3 codes for the 27 EU member states.
-# These are always aggregated into the OWID_EU27 group to avoid double-counting.
+# EDGAR already provides an EU27 aggregate row, so these are dropped to avoid
+# double-counting.
 EU27_CODES = frozenset({
     "AUT", "BEL", "BGR", "HRV", "CYP", "CZE", "DNK", "EST", "FIN", "FRA",
     "DEU", "GRC", "HUN", "IRL", "ITA", "LVA", "LTU", "LUX", "MLT", "NLD",
     "POL", "PRT", "ROU", "SVK", "SVN", "ESP", "SWE",
 })
 
-# ISO codes for the 53 African countries present in the dataset.
-# Used when Africa negotiates as a single bloc (OWID_AFR).
+# EDGAR codes for African countries (mostly ISO alpha-3).
+# Used when Africa negotiates as a single bloc.
 AFRICA_CODES = frozenset({
     "DZA", "AGO", "BEN", "BWA", "BFA", "BDI", "CPV", "CMR", "CAF", "TCD",
     "COM", "COD", "COG", "CIV", "DJI", "EGY", "GNQ", "ERI", "SWZ", "ETH",
@@ -22,37 +25,48 @@ AFRICA_CODES = frozenset({
 
 
 @st.cache_data
-def load_country_data(
-    africa_joint: bool = False,
-    path: str = "themis_data.csv",
-) -> pd.DataFrame:
+def load_country_data(africa_joint: bool = False) -> pd.DataFrame:
     """
-    Load emissions data and return filtered, normalised 2024 rows.
+    Load 2024 GHG data from the pre-processed CSV and return a filtered,
+    normalised DataFrame.
 
-    The EU27 countries are always replaced by the OWID_EU27 aggregate to avoid
-    double-counting.  When africa_joint is True, the 53 individual African
-    countries are likewise replaced by the OWID_AFR aggregate.
+    Columns returned:
+        entity                      country / bloc name
+        code                        EDGAR country code
+        share_of_global             normalised share within the negotiating set
+        emissions_total_per_capita  GHG per capita [tCO2e/person]
+
+    The EU27 individual members are always dropped (the EU27 aggregate row is
+    kept).  When africa_joint is True the individual African countries are
+    replaced by a synthetic Africa aggregate.
+
+    To regenerate themis_data.csv from the EDGAR source file, run:
+        python3 prepare_data.py
     """
-    df = pd.read_csv(path)
-    df = df[df["year"] == 2024]
-    df = df[~df["code"].isna()]
+    df = pd.read_csv(_CSV)
 
-    # Decide which OWID aggregate groups to keep as single negotiating blocs
-    owid_to_include = {"OWID_EU27"}
+    # Give the EU27 aggregate a readable name and drop its individual members
+    df.loc[df["code"] == "EU27", "entity"] = "European Union (27)"
+    df = df[~df["code"].isin(EU27_CODES)].copy()
+
+    # Africa: build aggregate bloc or keep individual countries
     if africa_joint:
-        owid_to_include.add("OWID_AFR")
+        africa_mask = df["code"].isin(AFRICA_CODES)
+        af = df[africa_mask]
+        af_total = af["emissions_total"].sum()
+        valid = af["emissions_total_per_capita"].notna() & (af["emissions_total_per_capita"] > 0)
+        pop_proxy = (af.loc[valid, "emissions_total"] / af.loc[valid, "emissions_total_per_capita"]).sum()
+        af_percap = float(af.loc[valid, "emissions_total"].sum() / pop_proxy) if pop_proxy > 0 else float("nan")
+        africa_row = pd.DataFrame([{
+            "code": "AFR",
+            "entity": "Africa",
+            "emissions_total": af_total,
+            "emissions_total_per_capita": af_percap,
+        }])
+        df = pd.concat([df[~africa_mask], africa_row], ignore_index=True)
 
-    # Drop all other OWID pseudo-codes (continents, income groups, etc.)
-    df = df[~df["code"].str.startswith("OWID") | df["code"].isin(owid_to_include)]
+    # Normalise shares to sum to 1 within the negotiating set
+    df["share_of_global"] = df["emissions_total"] / df["emissions_total"].sum()
 
-    # Drop individual member countries of the included blocs to avoid double-counting
-    member_codes = EU27_CODES | (AFRICA_CODES if africa_joint else frozenset())
-    df = df[~df["code"].isin(member_codes)]
-
-    # Normalise so shares sum to 1 within this filtered set
-    df["share_of_global"] = (
-        df["emissions_total_as_share_of_global"]
-        / df["emissions_total_as_share_of_global"].sum()
-    )
-    df.reset_index(inplace=True, drop=True)
+    df = df.reset_index(drop=True)
     return df
